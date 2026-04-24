@@ -77,11 +77,7 @@ function AppRoutes() {
 function App() {
   return (
     <AppProvider>
-      <div className="preview-shell">
-        <div className="device-preview">
-          <AppRoutes />
-        </div>
-      </div>
+      <AppRoutes />
     </AppProvider>
   )
 }
