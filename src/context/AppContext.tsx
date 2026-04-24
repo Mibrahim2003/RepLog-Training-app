@@ -27,21 +27,17 @@ import {
   ensureUserProfile,
   noopUnsubscribe,
   saveProfilePatch,
-  saveTemplateDoc,
   subscribeToCustomExercises,
   subscribeToProfile,
-  subscribeToTemplates,
   subscribeToWorkouts,
-  touchTemplateLastUsed,
   upsertWorkout,
 } from '../firebase/firestore'
 import {
-  buildBlocksFromTemplate,
   createDraftFromWorkout,
   createEmptyDraft,
   defaultProfile,
   exerciseCatalog,
-  muscleGroups,
+  muscleGroups as seedMuscleGroups,
 } from '../data/mockData'
 import type {
   AuthSession,
@@ -49,7 +45,6 @@ import type {
   EditorTarget,
   ExerciseDefinition,
   MuscleGroup,
-  TemplateCardVM,
   UserProfile,
   Workout,
   WorkoutDraft,
@@ -79,7 +74,6 @@ interface AppContextValue {
   muscleGroups: MuscleGroup[]
   exercises: ExerciseDefinition[]
   workouts: Workout[]
-  templates: TemplateCardVM[]
   pendingDrafts: DraftReference[]
   newDraft: WorkoutDraft | null
   signInWithGoogle: () => Promise<void>
@@ -93,8 +87,8 @@ interface AppContextValue {
     target: EditorTarget,
     patch: Partial<Pick<WorkoutDraft, 'workoutDate'>>,
   ) => void
+  addMuscleGroup: (name: string) => string
   toggleMuscleGroup: (target: EditorTarget, muscleGroupId: string) => void
-  applyTemplateToNewDraft: (templateId: string) => Promise<void>
   addExerciseToDraft: (target: EditorTarget, exerciseId: string) => void
   createCustomExercise: (input: {
     name: string
@@ -121,7 +115,6 @@ interface AppContextValue {
   deleteWorkout: (workoutId: string) => Promise<void>
   getWorkout: (workoutId: string) => Workout | null
   getExercise: (exerciseId: string) => ExerciseDefinition | null
-  saveTemplate: (template: TemplateCardVM) => Promise<void>
   resumeDraft: (draftRef: DraftReference) => string | null
   discardDraft: (draftRef: DraftReference) => void
 }
@@ -197,8 +190,8 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [authError, setAuthError] = useState<string | null>(firebaseSetupMessage)
   const [profile, setProfile] = useState<UserProfile>(defaultProfile)
   const [workouts, setWorkouts] = useState<Workout[]>([])
-  const [templates, setTemplates] = useState<TemplateCardVM[]>([])
   const [customExercises, setCustomExercises] = useState<ExerciseDefinition[]>([])
+  const [customMuscleGroups, setCustomMuscleGroups] = useState<MuscleGroup[]>([])
   const [newDraft, setNewDraft] = useState<WorkoutDraft | null>(null)
   const [editDrafts, setEditDrafts] = useState<Record<string, WorkoutDraft>>({})
   const [pendingDrafts, setPendingDrafts] = useState<DraftReference[]>([])
@@ -219,6 +212,11 @@ export function AppProvider({ children }: PropsWithChildren) {
   const exercises = useMemo(
     () => [...exerciseCatalog, ...customExercises],
     [customExercises],
+  )
+
+  const muscleGroups = useMemo(
+    () => [...seedMuscleGroups, ...customMuscleGroups],
+    [customMuscleGroups],
   )
 
   const getWorkout = (workoutId: string) => workoutsById.get(workoutId) ?? null
@@ -254,8 +252,8 @@ export function AppProvider({ children }: PropsWithChildren) {
           setSession({ status: 'signed_out' })
           setProfile(defaultProfile)
           setWorkouts([])
-          setTemplates([])
           setCustomExercises([])
+          setCustomMuscleGroups([])
           setNewDraft(null)
           setEditDrafts({})
           setPendingDrafts([])
@@ -274,7 +272,6 @@ export function AppProvider({ children }: PropsWithChildren) {
         subscriptionsRef.current = [
           subscribeToProfile(user.uid, setProfile),
           subscribeToWorkouts(user.uid, setWorkouts),
-          subscribeToTemplates(user.uid, setTemplates),
           subscribeToCustomExercises(user.uid, setCustomExercises),
         ]
 
@@ -353,6 +350,32 @@ export function AppProvider({ children }: PropsWithChildren) {
     )
   }
 
+  const addMuscleGroup: AppContextValue['addMuscleGroup'] = (name) => {
+    const trimmed = name.trim()
+    if (!trimmed) {
+      return ''
+    }
+
+    const existing = muscleGroups.find(
+      (group) => group.name.toLowerCase() === trimmed.toLowerCase(),
+    )
+    if (existing) {
+      return existing.id
+    }
+
+    const slug = trimmed
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+
+    const id = `custom-${slug || makeId('muscle')}`
+    setCustomMuscleGroups((previous) => [
+      ...previous,
+      { id, name: trimmed, sizeCategory: 'minor' },
+    ])
+    return id
+  }
+
   const toggleMuscleGroup: AppContextValue['toggleMuscleGroup'] = (target, muscleGroupId) => {
     updateDraftByTarget(
       target,
@@ -370,30 +393,6 @@ export function AppProvider({ children }: PropsWithChildren) {
       },
       target.kind === 'edit' ? getWorkout(target.workoutId) : null,
     )
-  }
-
-  const applyTemplateToNewDraft: AppContextValue['applyTemplateToNewDraft'] = async (templateId) => {
-    const template = templates.find((item) => item.id === templateId)
-    if (!template) {
-      return
-    }
-
-    setNewDraft((previous) => {
-      const baseDraft = previous ?? createEmptyDraft()
-      return {
-        ...baseDraft,
-        muscleGroupIds: [...template.muscleGroupIds],
-        exerciseBlocks: buildBlocksFromTemplate(template, profile.preferredUnit, exercises),
-      }
-    })
-
-    if (session.status === 'authenticated' && session.uid) {
-      try {
-        await touchTemplateLastUsed(session.uid, templateId)
-      } catch (error) {
-        setAuthError(formatAuthError(error))
-      }
-    }
   }
 
   const addExerciseToDraft: AppContextValue['addExerciseToDraft'] = (target, exerciseId) => {
@@ -704,14 +703,6 @@ export function AppProvider({ children }: PropsWithChildren) {
     })
   }
 
-  const saveTemplate: AppContextValue['saveTemplate'] = async (template) => {
-    if (session.status !== 'authenticated' || !session.uid) {
-      return
-    }
-
-    await saveTemplateDoc(session.uid, template)
-  }
-
   const resumeDraft: AppContextValue['resumeDraft'] = (draftRef) => {
     const payload = readDraftPayload(draftRef.key)
     if (!payload) {
@@ -802,7 +793,6 @@ export function AppProvider({ children }: PropsWithChildren) {
     muscleGroups,
     exercises,
     workouts,
-    templates,
     pendingDrafts,
     newDraft,
     signInWithGoogle,
@@ -813,8 +803,8 @@ export function AppProvider({ children }: PropsWithChildren) {
     ensureEditDraft,
     getDraft,
     updateDraftMeta,
+    addMuscleGroup,
     toggleMuscleGroup,
-    applyTemplateToNewDraft,
     addExerciseToDraft,
     createCustomExercise,
     updateExerciseNote,
@@ -827,7 +817,6 @@ export function AppProvider({ children }: PropsWithChildren) {
     deleteWorkout,
     getWorkout,
     getExercise,
-    saveTemplate,
     resumeDraft,
     discardDraft,
   }

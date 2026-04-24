@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import type { PropsWithChildren, ReactNode } from 'react'
 
-type ActiveTab = 'log' | 'stats' | 'plans' | 'settings'
+type ActiveTab = 'log' | 'stats' | 'settings'
 
 interface AppShellProps extends PropsWithChildren {
   activeTab: ActiveTab
@@ -11,7 +11,6 @@ interface AppShellProps extends PropsWithChildren {
 const navItems: Array<{ label: string; icon: string; tab: ActiveTab; href: string }> = [
   { label: 'Log', icon: 'edit_note', tab: 'log', href: '/' },
   { label: 'Stats', icon: 'leaderboard', tab: 'stats', href: '/history' },
-  { label: 'Plans', icon: 'event_note', tab: 'plans', href: '/templates' },
   { label: 'Settings', icon: 'settings', tab: 'settings', href: '/settings' },
 ]
 

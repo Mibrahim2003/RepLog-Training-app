@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { AppShell, EmptyState, ExerciseBlockCard } from '../components'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { AppShell, ExerciseBlockCard } from '../components'
 import { useAppContext } from '../context/AppContext'
 import type { EditorTarget } from '../types'
 import { deriveWorkoutTitle, formatLongDate } from '../utils/format'
@@ -20,6 +20,7 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
     ensureEditDraft,
     getDraft,
     updateDraftMeta,
+    addMuscleGroup,
     toggleMuscleGroup,
     updateExerciseNote,
     updateSetField,
@@ -30,6 +31,7 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
     saveWorkout,
   } = useAppContext()
   const [isSaving, setIsSaving] = useState(false)
+  const [customMuscleName, setCustomMuscleName] = useState('')
 
   const target = useMemo<EditorTarget>(() => {
     if (mode === 'edit' && params.id) {
@@ -65,9 +67,6 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
     )
   }
 
-  const majorGroups = muscleGroups.filter((group) => group.sizeCategory === 'major')
-  const minorGroups = muscleGroups.filter((group) => group.sizeCategory === 'minor')
-
   const openExerciseSearch = () => {
     const href =
       target.kind === 'new'
@@ -75,6 +74,16 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
         : `/exercise-search?editor=edit&workoutId=${target.workoutId}`
 
     navigate(href)
+  }
+
+  const handleAddMuscleGroup = () => {
+    const groupId = addMuscleGroup(customMuscleName)
+    if (!groupId) {
+      return
+    }
+
+    toggleMuscleGroup(target, groupId)
+    setCustomMuscleName('')
   }
 
   const handleSave = () => {
@@ -122,21 +131,7 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
             </div>
 
             <div className="muscle-grid">
-              {majorGroups.map((group) => {
-                const selected = draft.muscleGroupIds.includes(group.id)
-                return (
-                  <button
-                    key={group.id}
-                    type="button"
-                    className={`muscle-chip muscle-chip--major${selected ? ' muscle-chip--selected' : ''}`}
-                    onClick={() => toggleMuscleGroup(target, group.id)}
-                  >
-                    {group.name}
-                  </button>
-                )
-              })}
-
-              {minorGroups.map((group) => {
+              {muscleGroups.map((group) => {
                 const selected = draft.muscleGroupIds.includes(group.id)
                 return (
                   <button
@@ -150,18 +145,30 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
                 )
               })}
             </div>
-          </section>
 
-          <Link to="/templates?pick=new" className="brutal-button brutal-button--secondary brutal-button--full">
-            Choose Template
-          </Link>
+            <div className="muscle-add-row">
+              <input
+                className="brutal-input"
+                placeholder="Add custom muscle group"
+                value={customMuscleName}
+                onChange={(event) => setCustomMuscleName(event.target.value)}
+              />
+              <button
+                type="button"
+                className="brutal-button brutal-button--secondary"
+                onClick={handleAddMuscleGroup}
+              >
+                + Add
+              </button>
+            </div>
+          </section>
 
           <button
             type="button"
             className="brutal-button brutal-button--primary brutal-button--full sticky-action"
             onClick={() => setSearchParams({ step: 'log' })}
           >
-            Start Workout
+            Log Exercise
           </button>
         </section>
       </AppShell>
@@ -201,45 +208,32 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
           </button>
         </section>
 
-        {draft.exerciseBlocks.length === 0 ? (
-          <EmptyState
-            title="Add the first exercise."
-            message="Use search or recents to build out the workout block by block."
-            actionLabel="Find Exercises"
-            actionTo={
-              target.kind === 'new'
-                ? '/exercise-search?editor=new'
-                : `/exercise-search?editor=edit&workoutId=${target.workoutId}`
-            }
-          />
-        ) : (
-          <div className="card-stack">
-            {draft.exerciseBlocks.map((block) => (
-              <ExerciseBlockCard
-                key={block.workoutExerciseId}
-                block={block}
-                preferredUnit={profile.preferredUnit}
-                editable
-                onExerciseNoteChange={(workoutExerciseId, note) =>
-                  updateExerciseNote(target, workoutExerciseId, note)
-                }
-                onSetChange={(workoutExerciseId, setId, field, value) =>
-                  updateSetField(target, workoutExerciseId, setId, field, value)
-                }
-                onAddSet={(workoutExerciseId) => addSet(target, workoutExerciseId)}
-                onDuplicateLastSet={(workoutExerciseId) =>
-                  duplicateLastSet(target, workoutExerciseId)
-                }
-                onDeleteSet={(workoutExerciseId, setId) =>
-                  deleteSet(target, workoutExerciseId, setId)
-                }
-                onDeleteExercise={(workoutExerciseId) =>
-                  deleteExerciseBlock(target, workoutExerciseId)
-                }
-              />
-            ))}
-          </div>
-        )}
+        <div className="card-stack">
+          {draft.exerciseBlocks.map((block) => (
+            <ExerciseBlockCard
+              key={block.workoutExerciseId}
+              block={block}
+              preferredUnit={profile.preferredUnit}
+              editable
+              onExerciseNoteChange={(workoutExerciseId, note) =>
+                updateExerciseNote(target, workoutExerciseId, note)
+              }
+              onSetChange={(workoutExerciseId, setId, field, value) =>
+                updateSetField(target, workoutExerciseId, setId, field, value)
+              }
+              onAddSet={(workoutExerciseId) => addSet(target, workoutExerciseId)}
+              onDuplicateLastSet={(workoutExerciseId) =>
+                duplicateLastSet(target, workoutExerciseId)
+              }
+              onDeleteSet={(workoutExerciseId, setId) =>
+                deleteSet(target, workoutExerciseId, setId)
+              }
+              onDeleteExercise={(workoutExerciseId) =>
+                deleteExerciseBlock(target, workoutExerciseId)
+              }
+            />
+          ))}
+        </div>
 
         <button
           type="button"

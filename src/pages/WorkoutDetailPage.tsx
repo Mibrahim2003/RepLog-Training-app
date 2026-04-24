@@ -1,16 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell, ExerciseBlockCard } from '../components'
 import { useAppContext } from '../context/AppContext'
-import { makeId } from '../utils/format'
 import { formatLongDate } from '../utils/format'
 
 export function WorkoutDetailPage() {
   const navigate = useNavigate()
   const params = useParams()
-  const { getWorkout, muscleGroups, profile, deleteWorkout, saveTemplate } = useAppContext()
+  const { getWorkout, muscleGroups, profile, deleteWorkout } = useAppContext()
   const workout = params.id ? getWorkout(params.id) : null
-  const [isSavingTemplate, setIsSavingTemplate] = useState(false)
 
   const muscleNames = useMemo(
     () =>
@@ -32,25 +30,6 @@ export function WorkoutDetailPage() {
     )
   }
 
-  const handleSaveTemplate = () => {
-    void (async () => {
-      setIsSavingTemplate(true)
-      await saveTemplate({
-        id: makeId('template'),
-        name: `${workout.title} Template`,
-        muscleGroupIds: [...workout.muscleGroupIds],
-        exerciseCount: workout.exerciseBlocks.length,
-        exercises: workout.exerciseBlocks.map((block, index) => ({
-          exerciseId: block.exerciseId,
-          orderIndex: index + 1,
-          defaultSetCount: Math.max(block.sets.length, 1),
-        })),
-      })
-      setIsSavingTemplate(false)
-      navigate('/templates')
-    })()
-  }
-
   return (
     <AppShell activeTab="stats">
       <section className="page-stack">
@@ -67,14 +46,6 @@ export function WorkoutDetailPage() {
             <button
               type="button"
               className="brutal-button brutal-button--primary"
-              onClick={handleSaveTemplate}
-              disabled={isSavingTemplate}
-            >
-              {isSavingTemplate ? 'Saving...' : 'Save as Template'}
-            </button>
-            <button
-              type="button"
-              className="brutal-button brutal-button--secondary"
               onClick={() => navigate(`/workouts/${workout.id}/edit`)}
             >
               Edit

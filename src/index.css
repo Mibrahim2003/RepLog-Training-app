@@ -364,7 +364,7 @@ h3,
   left: 0;
   z-index: 70;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-1);
   min-height: var(--nav-height);
   padding: var(--space-1) var(--space-2) calc(var(--space-1) + env(safe-area-inset-bottom));
@@ -550,7 +550,7 @@ h3,
   align-items: center;
   justify-content: center;
   text-align: center;
-  min-height: 80px;
+  min-height: 88px;
   padding: var(--space-2);
   border: 3px solid var(--ink);
   background: var(--surface);
@@ -565,13 +565,19 @@ h3,
 }
 
 .muscle-chip--major {
-  grid-column: span 2;
-  min-height: 96px;
+  min-height: 88px;
 }
 
 .muscle-chip--selected {
   background: var(--accent);
   color: var(--surface);
+}
+
+.muscle-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
 }
 
 .sticky-action {

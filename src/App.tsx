@@ -8,7 +8,6 @@ import {
   HistoryPage,
   SettingsPage,
   SignInPage,
-  TemplatesPage,
   WorkoutDetailPage,
   ExerciseHistoryPage,
 } from './pages'
@@ -33,7 +32,6 @@ function ProtectedRoutes() {
       <Route path="/history" element={<HistoryPage />} />
       <Route path="/workouts/:id" element={<WorkoutDetailPage />} />
       <Route path="/exercises/:id" element={<ExerciseHistoryPage />} />
-      <Route path="/templates" element={<TemplatesPage />} />
       <Route path="/settings" element={<SettingsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
