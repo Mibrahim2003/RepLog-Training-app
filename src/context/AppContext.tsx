@@ -11,10 +11,8 @@ import {
   type SetStateAction,
 } from 'react'
 import {
-  getRedirectResult,
   onAuthStateChanged,
   signInWithPopup,
-  signInWithRedirect,
   signOut as firebaseSignOut,
   type AuthError,
   type Unsubscribe,
@@ -139,19 +137,6 @@ function formatAuthError(error: unknown) {
   }
 }
 
-function shouldFallbackToRedirect(error: unknown) {
-  if (!error || typeof error !== 'object') {
-    return false
-  }
-
-  const authError = error as Partial<AuthError>
-  return (
-    authError.code === 'auth/popup-blocked' ||
-    authError.code === 'auth/web-storage-unsupported' ||
-    authError.code === 'auth/operation-not-supported-in-this-environment'
-  )
-}
-
 function updateDraftByTarget(
   target: EditorTarget,
   newDraft: WorkoutDraft | null,
@@ -250,22 +235,9 @@ export function AppProvider({ children }: PropsWithChildren) {
       return noopUnsubscribe
     }
 
-    let mounted = true
     let authUnsubscribe: Unsubscribe = noopUnsubscribe
 
     ;(async () => {
-      try {
-        await getRedirectResult(auth)
-      } catch (error) {
-        if (mounted) {
-          setAuthError(formatAuthError(error))
-        }
-      }
-
-      if (!mounted) {
-        return
-      }
-
       authUnsubscribe = onAuthStateChanged(auth, async (user) => {
         teardownSubscriptions()
 
@@ -301,7 +273,6 @@ export function AppProvider({ children }: PropsWithChildren) {
     })()
 
     return () => {
-      mounted = false
       authUnsubscribe()
       teardownSubscriptions()
     }
@@ -808,11 +779,6 @@ export function AppProvider({ children }: PropsWithChildren) {
     try {
       await signInWithPopup(auth, googleProvider)
     } catch (error) {
-      if (shouldFallbackToRedirect(error)) {
-        await signInWithRedirect(auth, googleProvider)
-        return
-      }
-
       setAuthError(formatAuthError(error))
     }
   }
