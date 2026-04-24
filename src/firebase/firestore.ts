@@ -114,11 +114,15 @@ export async function ensureUserProfile(uid: string, user: FirebaseUser) {
   const existing = await getDoc(profileRef)
 
   if (existing.exists()) {
+    const existingData = existing.data() as UserProfileDoc
+    const preservedDisplayName =
+      existingData.displayName?.trim() || user.displayName?.trim() || 'Athlete'
+
     await setDoc(
       profileRef,
       {
         email: user.email ?? '',
-        displayName: user.displayName?.trim() || existing.data().displayName || 'Athlete',
+        displayName: preservedDisplayName,
         updatedAt: serverTimestamp(),
       },
       { merge: true },

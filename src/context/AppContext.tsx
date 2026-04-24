@@ -669,10 +669,33 @@ export function AppProvider({ children }: PropsWithChildren) {
       return null
     }
 
-    const existingWorkout =
+    const normalizeMuscleKey = (muscleIds: string[]) =>
+      [...new Set(muscleIds)].sort((left, right) => left.localeCompare(right)).join('|')
+
+    let draftToSave = draft
+    let existingWorkout =
       target.kind === 'edit' && draft.sourceWorkoutId ? getWorkout(draft.sourceWorkoutId) : null
-    const title = deriveWorkoutTitle(draft, muscleGroups)
-    const workoutId = await upsertWorkout(session.uid, draft, title, existingWorkout)
+
+    if (target.kind === 'new') {
+      const draftKey = normalizeMuscleKey(draft.muscleGroupIds)
+      const mergeTarget = workouts.find(
+        (workout) =>
+          workout.workoutDate === draft.workoutDate &&
+          normalizeMuscleKey(workout.muscleGroupIds) === draftKey,
+      )
+
+      if (mergeTarget) {
+        existingWorkout = mergeTarget
+        draftToSave = {
+          ...draft,
+          sourceWorkoutId: mergeTarget.id,
+          exerciseBlocks: [...mergeTarget.exerciseBlocks, ...draft.exerciseBlocks],
+        }
+      }
+    }
+
+    const title = deriveWorkoutTitle(draftToSave, muscleGroups)
+    const workoutId = await upsertWorkout(session.uid, draftToSave, title, existingWorkout)
 
     clearDraftFromSession(session.uid, target)
 
