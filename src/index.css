@@ -295,6 +295,11 @@ h3,
 
 .brutal-input {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: block;
+  appearance: none;
+  -webkit-appearance: none;
   box-sizing: border-box;
   min-height: 52px;
   padding: 0 var(--space-2);
@@ -524,6 +529,7 @@ h3,
 .setup-field-row {
   display: grid;
   gap: var(--space-1);
+  min-width: 0;
 }
 
 .field-label {
