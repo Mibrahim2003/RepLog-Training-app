@@ -214,6 +214,11 @@ export function AppProvider({ children }: PropsWithChildren) {
     [customExercises],
   )
 
+  const primaryMuscleByExerciseId = useMemo(
+    () => new Map(exercises.map((exercise) => [exercise.id, exercise.primaryMuscleGroupId])),
+    [exercises],
+  )
+
   const muscleGroups = useMemo(
     () => [...seedMuscleGroups, ...customMuscleGroups],
     [customMuscleGroups],
@@ -223,6 +228,22 @@ export function AppProvider({ children }: PropsWithChildren) {
 
   const getExercise = (exerciseId: string) =>
     exercises.find((exercise) => exercise.id === exerciseId) ?? null
+
+  const deriveMuscleGroupsFromBlocks = (
+    blocks: WorkoutDraft['exerciseBlocks'],
+    fallback: string[],
+    overrides: Record<string, string> = {},
+  ) => {
+    const muscleIds = blocks
+      .map((block) => overrides[block.exerciseId] ?? primaryMuscleByExerciseId.get(block.exerciseId))
+      .filter((muscleId): muscleId is string => Boolean(muscleId))
+
+    if (muscleIds.length === 0) {
+      return fallback
+    }
+
+    return [...new Set(muscleIds)]
+  }
 
   useEffect(() => {
     if (!isFirebaseConfigured || !auth) {
@@ -411,23 +432,23 @@ export function AppProvider({ children }: PropsWithChildren) {
           (block) => block.exerciseId === exerciseId,
         ).length
 
+        const nextBlocks: WorkoutDraft['exerciseBlocks'] = [
+          ...draft.exerciseBlocks,
+          {
+            workoutExerciseId: `block-${makeId('exercise')}`,
+            exerciseId: definition.id,
+            name: definition.name,
+            note: '',
+            isDuplicateInstance: duplicateCount > 0,
+            duplicateWarning: duplicateCount > 0,
+            sets: [createBlankSet(1, profile.preferredUnit)],
+          },
+        ]
+
         return {
           ...draft,
-          muscleGroupIds: draft.muscleGroupIds.includes(definition.primaryMuscleGroupId)
-            ? draft.muscleGroupIds
-            : [...draft.muscleGroupIds, definition.primaryMuscleGroupId],
-          exerciseBlocks: [
-            ...draft.exerciseBlocks,
-            {
-              workoutExerciseId: `block-${makeId('exercise')}`,
-              exerciseId: definition.id,
-              name: definition.name,
-              note: '',
-              isDuplicateInstance: duplicateCount > 0,
-              duplicateWarning: duplicateCount > 0,
-              sets: [createBlankSet(1, profile.preferredUnit)],
-            },
-          ],
+          muscleGroupIds: deriveMuscleGroupsFromBlocks(nextBlocks, [definition.primaryMuscleGroupId]),
+          exerciseBlocks: nextBlocks,
         }
       },
       target.kind === 'edit' ? getWorkout(target.workoutId) : null,
@@ -466,23 +487,27 @@ export function AppProvider({ children }: PropsWithChildren) {
             (block) => block.exerciseId === created.id,
           ).length
 
+          const nextBlocks: WorkoutDraft['exerciseBlocks'] = [
+            ...draft.exerciseBlocks,
+            {
+              workoutExerciseId: `block-${makeId('exercise')}`,
+              exerciseId: created.id,
+              name: created.name,
+              note: '',
+              isDuplicateInstance: duplicateCount > 0,
+              duplicateWarning: duplicateCount > 0,
+              sets: [createBlankSet(1, profile.preferredUnit)],
+            },
+          ]
+
           return {
             ...draft,
-            muscleGroupIds: draft.muscleGroupIds.includes(primaryMuscleGroupId)
-              ? draft.muscleGroupIds
-              : [...draft.muscleGroupIds, primaryMuscleGroupId],
-            exerciseBlocks: [
-              ...draft.exerciseBlocks,
-              {
-                workoutExerciseId: `block-${makeId('exercise')}`,
-                exerciseId: created.id,
-                name: created.name,
-                note: '',
-                isDuplicateInstance: duplicateCount > 0,
-                duplicateWarning: duplicateCount > 0,
-                sets: [createBlankSet(1, profile.preferredUnit)],
-              },
-            ],
+            muscleGroupIds: deriveMuscleGroupsFromBlocks(
+              nextBlocks,
+              [primaryMuscleGroupId],
+              { [created.id]: primaryMuscleGroupId },
+            ),
+            exerciseBlocks: nextBlocks,
           }
         },
         target.kind === 'edit' ? getWorkout(target.workoutId) : null,
@@ -654,12 +679,20 @@ export function AppProvider({ children }: PropsWithChildren) {
       newDraft,
       setNewDraft,
       setEditDrafts,
-      (draft) => ({
-        ...draft,
-        exerciseBlocks: draft.exerciseBlocks.filter(
+      (draft) => {
+        const nextBlocks = draft.exerciseBlocks.filter(
           (block) => block.workoutExerciseId !== workoutExerciseId,
-        ),
-      }),
+        )
+
+        return {
+          ...draft,
+          muscleGroupIds:
+            nextBlocks.length > 0
+              ? deriveMuscleGroupsFromBlocks(nextBlocks, draft.muscleGroupIds)
+              : draft.muscleGroupIds,
+          exerciseBlocks: nextBlocks,
+        }
+      },
       target.kind === 'edit' ? getWorkout(target.workoutId) : null,
     )
   }
