@@ -542,6 +542,7 @@ h3,
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
   min-height: 80px;
   padding: var(--space-2);
   border: 3px solid var(--ink);
@@ -549,13 +550,16 @@ h3,
   box-shadow: var(--shadow);
   font-family: 'Space Grotesk', monospace;
   font-size: 1.1rem;
+  line-height: 1.15;
   text-transform: uppercase;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .muscle-chip--major {
   grid-column: span 2;
   min-height: 96px;
-  font-size: 1.35rem;
 }
 
 .muscle-chip--selected {
