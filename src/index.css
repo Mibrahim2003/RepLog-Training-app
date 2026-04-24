@@ -641,18 +641,18 @@ h3,
 .set-table__header,
 .set-table__row {
   display: grid;
-  grid-template-columns: 40px 76px 72px minmax(86px, 1fr) 40px;
+  grid-template-columns: 32px 60px 60px minmax(72px, 1fr) 32px;
   gap: var(--space-1);
   align-items: center;
-  padding: 10px var(--space-2);
+  padding: 8px var(--space-1);
 }
 
 .set-table__header {
   border-bottom: 1px solid var(--ink);
   background: rgba(255, 95, 95, 0.12);
   font-family: 'Space Grotesk', monospace;
-  font-size: 0.82rem;
-  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
@@ -667,8 +667,24 @@ h3,
 .set-table__order {
   text-align: center;
   font-family: 'Space Grotesk', monospace;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
+}
+
+.set-table .icon-button--small {
+  width: 32px;
+  height: 32px;
+  border-width: 2px;
+}
+
+.set-table .brutal-input {
+  min-height: 44px;
+}
+
+.set-table .brutal-input--data,
+.set-table .brutal-input--note {
+  padding-inline: 6px;
+  font-size: 1rem;
 }
 
 .note-cell {
