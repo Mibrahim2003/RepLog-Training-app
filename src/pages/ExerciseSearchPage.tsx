@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AppShell } from '../components'
 import { useAppContext } from '../context/AppContext'
@@ -7,9 +7,9 @@ import type { EditorTarget } from '../types'
 export function ExerciseSearchPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { muscleGroups, createCustomExercise } = useAppContext()
+  const { muscleGroups, createCustomExercise, getDraft } = useAppContext()
   const [customName, setCustomName] = useState('')
-  const [primaryMuscleGroupId, setPrimaryMuscleGroupId] = useState(muscleGroups[0]?.id ?? 'chest')
+  const [primaryMuscleGroupId, setPrimaryMuscleGroupId] = useState('')
 
   const target: EditorTarget =
     searchParams.get('editor') === 'edit' && searchParams.get('workoutId')
@@ -19,15 +19,38 @@ export function ExerciseSearchPage() {
         }
       : { kind: 'new' }
 
+  const draft = getDraft(target)
+
+  const selectedMuscleGroups = useMemo(() => {
+    const selectedIds = draft?.muscleGroupIds ?? []
+    if (selectedIds.length === 0) {
+      return muscleGroups
+    }
+
+    return muscleGroups.filter((group) => selectedIds.includes(group.id))
+  }, [draft?.muscleGroupIds, muscleGroups])
+
+  const isSingleSelected = selectedMuscleGroups.length === 1
+
+  const effectivePrimaryMuscleGroupId = selectedMuscleGroups.some(
+    (group) => group.id === primaryMuscleGroupId,
+  )
+    ? primaryMuscleGroupId
+    : (selectedMuscleGroups[0]?.id ?? '')
+
   const handleCreateCustom = () => {
     void (async () => {
       if (!customName.trim()) {
         return
       }
 
+      if (!effectivePrimaryMuscleGroupId) {
+        return
+      }
+
       await createCustomExercise({
         name: customName,
-        primaryMuscleGroupId,
+        primaryMuscleGroupId: effectivePrimaryMuscleGroupId,
         target,
       })
       navigate(target.kind === 'new' ? '/workouts/new?step=log' : `/workouts/${target.workoutId}/edit`)
@@ -56,23 +79,25 @@ export function ExerciseSearchPage() {
               />
             </div>
 
-            <div className="setup-field-row">
-              <label className="field-label" htmlFor="primary-muscle">
-                Primary Muscle Group
-              </label>
-              <select
-                id="primary-muscle"
-                className="brutal-input"
-                value={primaryMuscleGroupId}
-                onChange={(event) => setPrimaryMuscleGroupId(event.target.value)}
-              >
-                {muscleGroups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!isSingleSelected ? (
+              <div className="setup-field-row">
+                <label className="field-label" htmlFor="primary-muscle">
+                  Primary Muscle Group
+                </label>
+                <select
+                  id="primary-muscle"
+                  className="brutal-input"
+                  value={effectivePrimaryMuscleGroupId}
+                  onChange={(event) => setPrimaryMuscleGroupId(event.target.value)}
+                >
+                  {selectedMuscleGroups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
 
             <button
               type="button"
