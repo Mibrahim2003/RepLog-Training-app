@@ -112,7 +112,6 @@ export interface WorkoutDraft {
   id: string
   sourceWorkoutId?: string
   workoutDate: string
-  durationMinutes: string
   muscleGroupIds: string[]
   exerciseBlocks: ExerciseBlockVM[]
 }

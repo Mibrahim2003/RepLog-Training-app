@@ -173,7 +173,6 @@ export function createEmptyDraft(workoutDate = todayLocalDateString()): WorkoutD
   return {
     id: makeId('draft'),
     workoutDate,
-    durationMinutes: '',
     muscleGroupIds: [],
     exerciseBlocks: [],
   }
@@ -184,7 +183,6 @@ export function createDraftFromWorkout(workout: Workout): WorkoutDraft {
     id: makeId('draft'),
     sourceWorkoutId: workout.id,
     workoutDate: workout.workoutDate,
-    durationMinutes: workout.durationMinutes ? String(workout.durationMinutes) : '',
     muscleGroupIds: [...workout.muscleGroupIds],
     exerciseBlocks: workout.exerciseBlocks.map((block) => ({
       ...block,

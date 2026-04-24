@@ -91,7 +91,7 @@ interface AppContextValue {
   getDraft: (target: EditorTarget) => WorkoutDraft | null
   updateDraftMeta: (
     target: EditorTarget,
-    patch: Partial<Pick<WorkoutDraft, 'workoutDate' | 'durationMinutes'>>,
+    patch: Partial<Pick<WorkoutDraft, 'workoutDate'>>,
   ) => void
   toggleMuscleGroup: (target: EditorTarget, muscleGroupId: string) => void
   applyTemplateToNewDraft: (templateId: string) => Promise<void>

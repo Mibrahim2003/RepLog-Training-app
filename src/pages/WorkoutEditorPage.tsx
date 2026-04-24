@@ -114,24 +114,6 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
                 }
               />
             </div>
-
-            <div className="setup-field-row">
-              <label className="field-label" htmlFor="workout-duration">
-                Duration (optional)
-              </label>
-              <input
-                id="workout-duration"
-                type="number"
-                className="brutal-input"
-                placeholder="Minutes"
-                value={draft.durationMinutes}
-                onChange={(event) =>
-                  updateDraftMeta(target, {
-                    durationMinutes: event.target.value,
-                  })
-                }
-              />
-            </div>
           </section>
 
           <section className="section-stack">
@@ -206,7 +188,6 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
             <h1>{deriveWorkoutTitle(draft, muscleGroups)}</h1>
             <p>
               {formatLongDate(draft.workoutDate)}
-              {draft.durationMinutes ? ` • ${draft.durationMinutes} min` : ''}
             </p>
           </div>
 

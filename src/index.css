@@ -295,6 +295,7 @@ h3,
 
 .brutal-input {
   width: 100%;
+  box-sizing: border-box;
   min-height: 52px;
   padding: 0 var(--space-2);
   border: 3px solid var(--ink);

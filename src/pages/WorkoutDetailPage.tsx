@@ -60,7 +60,6 @@ export function WorkoutDetailPage() {
             <h1>{workout.title}</h1>
             <p>
               {formatLongDate(workout.workoutDate)}
-              {workout.durationMinutes ? ` • ${workout.durationMinutes} min` : ''}
             </p>
           </div>
 

@@ -262,7 +262,6 @@ export async function upsertWorkout(
   const workoutDoc: WorkoutDoc = {
     title,
     workoutDate: draft.workoutDate,
-    durationMinutes: draft.durationMinutes ? Number(draft.durationMinutes) : undefined,
     muscleGroupIds: draft.muscleGroupIds,
     exerciseBlocks: draft.exerciseBlocks.map(serializeExerciseBlock),
   }
