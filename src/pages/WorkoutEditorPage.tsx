@@ -12,7 +12,7 @@ interface WorkoutEditorPageProps {
 export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
   const navigate = useNavigate()
   const params = useParams()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const {
     muscleGroups,
     profile,
@@ -166,7 +166,7 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
           <button
             type="button"
             className="brutal-button brutal-button--primary brutal-button--full sticky-action"
-            onClick={() => setSearchParams({ step: 'log' })}
+            onClick={() => navigate('/exercise-search?editor=new')}
           >
             Log Exercise
           </button>
