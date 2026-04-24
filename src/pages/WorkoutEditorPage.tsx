@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { AppShell, ExerciseBlockCard } from '../components'
+import { AppShell, ExerciseBlockCard, UndoSnackbar } from '../components'
 import { useAppContext } from '../context/AppContext'
-import type { EditorTarget } from '../types'
+import type { EditorTarget, WorkoutDraft } from '../types'
 import { deriveWorkoutTitle, formatLongDate } from '../utils/format'
+import { saveDeletionBackup } from '../utils/backups'
 
 interface WorkoutEditorPageProps {
   mode: 'new' | 'edit'
@@ -19,6 +20,7 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
     ensureNewDraft,
     ensureEditDraft,
     getDraft,
+    replaceDraft,
     updateDraftMeta,
     addMuscleGroup,
     toggleMuscleGroup,
@@ -32,6 +34,8 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
   } = useAppContext()
   const [isSaving, setIsSaving] = useState(false)
   const [customMuscleName, setCustomMuscleName] = useState('')
+  const [undoState, setUndoState] = useState<{ message: string; snapshot: WorkoutDraft } | null>(null)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const target = useMemo<EditorTarget>(() => {
     if (mode === 'edit' && params.id) {
@@ -54,6 +58,36 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
 
   const draft = getDraft(target)
   const isLogStep = mode === 'edit' || searchParams.get('step') === 'log'
+
+  const queueUndo = (message: string, snapshot: WorkoutDraft) => {
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current)
+    }
+
+    setUndoState({ message, snapshot })
+    undoTimerRef.current = setTimeout(() => {
+      setUndoState(null)
+      undoTimerRef.current = null
+    }, 7000)
+  }
+
+  const clearUndo = () => {
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current)
+      undoTimerRef.current = null
+    }
+    setUndoState(null)
+  }
+
+  const cloneDraft = (value: WorkoutDraft) => JSON.parse(JSON.stringify(value)) as WorkoutDraft
+
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) {
+        clearTimeout(undoTimerRef.current)
+      }
+    }
+  }, [])
 
   if (!draft) {
     return (
@@ -225,12 +259,29 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
               onDuplicateLastSet={(workoutExerciseId) =>
                 duplicateLastSet(target, workoutExerciseId)
               }
-              onDeleteSet={(workoutExerciseId, setId) =>
+              onDeleteSet={(workoutExerciseId, setId) => {
+                const snapshot = cloneDraft(draft)
+                saveDeletionBackup('set', {
+                  target,
+                  workoutExerciseId,
+                  setId,
+                  snapshot,
+                })
+
                 deleteSet(target, workoutExerciseId, setId)
-              }
-              onDeleteExercise={(workoutExerciseId) =>
+                queueUndo('Set deleted.', snapshot)
+              }}
+              onDeleteExercise={(workoutExerciseId) => {
+                const snapshot = cloneDraft(draft)
+                saveDeletionBackup('exercise', {
+                  target,
+                  workoutExerciseId,
+                  snapshot,
+                })
+
                 deleteExerciseBlock(target, workoutExerciseId)
-              }
+                queueUndo('Exercise block deleted.', snapshot)
+              }}
             />
           ))}
         </div>
@@ -242,6 +293,17 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
         >
           + Exercise
         </button>
+
+        {undoState ? (
+          <UndoSnackbar
+            message={undoState.message}
+            onUndo={() => {
+              replaceDraft(target, undoState.snapshot)
+              clearUndo()
+            }}
+            onDismiss={clearUndo}
+          />
+        ) : null}
       </section>
     </AppShell>
   )

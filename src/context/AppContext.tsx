@@ -24,6 +24,7 @@ import {
   deleteWorkoutDoc,
   ensureUserProfile,
   noopUnsubscribe,
+  restoreWorkoutDoc,
   saveProfilePatch,
   subscribeToCustomExercises,
   subscribeToProfile,
@@ -81,6 +82,7 @@ interface AppContextValue {
   ensureNewDraft: () => void
   ensureEditDraft: (workoutId: string) => void
   getDraft: (target: EditorTarget) => WorkoutDraft | null
+  replaceDraft: (target: EditorTarget, draft: WorkoutDraft) => void
   updateDraftMeta: (
     target: EditorTarget,
     patch: Partial<Pick<WorkoutDraft, 'workoutDate'>>,
@@ -111,6 +113,7 @@ interface AppContextValue {
   deleteExerciseBlock: (target: EditorTarget, workoutExerciseId: string) => void
   saveWorkout: (target: EditorTarget, draft: WorkoutDraft) => Promise<string | null>
   deleteWorkout: (workoutId: string) => Promise<void>
+  restoreWorkout: (workout: Workout) => Promise<void>
   getWorkout: (workoutId: string) => Workout | null
   getExercise: (exerciseId: string) => ExerciseDefinition | null
   resumeDraft: (draftRef: DraftReference) => string | null
@@ -326,6 +329,18 @@ export function AppProvider({ children }: PropsWithChildren) {
     }
 
     return editDrafts[target.workoutId] ?? null
+  }
+
+  const replaceDraft: AppContextValue['replaceDraft'] = (target, draft) => {
+    if (target.kind === 'new') {
+      setNewDraft(draft)
+      return
+    }
+
+    setEditDrafts((previous) => ({
+      ...previous,
+      [target.workoutId]: draft,
+    }))
   }
 
   const updateDraftMeta: AppContextValue['updateDraftMeta'] = (target, patch) => {
@@ -730,6 +745,14 @@ export function AppProvider({ children }: PropsWithChildren) {
     })
   }
 
+  const restoreWorkout: AppContextValue['restoreWorkout'] = async (workout) => {
+    if (session.status !== 'authenticated' || !session.uid) {
+      return
+    }
+
+    await restoreWorkoutDoc(session.uid, workout)
+  }
+
   const resumeDraft: AppContextValue['resumeDraft'] = (draftRef) => {
     const payload = readDraftPayload(draftRef.key)
     if (!payload) {
@@ -824,6 +847,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     ensureNewDraft,
     ensureEditDraft,
     getDraft,
+    replaceDraft,
     updateDraftMeta,
     addMuscleGroup,
     toggleMuscleGroup,
@@ -837,6 +861,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     deleteExerciseBlock,
     saveWorkout,
     deleteWorkout,
+    restoreWorkout,
     getWorkout,
     getExercise,
     resumeDraft,

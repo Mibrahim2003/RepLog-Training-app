@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ConfirmActionDialog } from './ConfirmActionDialog'
 import type { ExerciseBlockVM, Unit } from '../types'
 import { displayWeightFromSet } from '../utils/format'
 
@@ -32,6 +34,9 @@ export function ExerciseBlockCard({
   onDeleteSet,
   onDeleteExercise,
 }: ExerciseBlockCardProps) {
+  const [confirmExerciseDeleteOpen, setConfirmExerciseDeleteOpen] = useState(false)
+  const [pendingSetDeleteId, setPendingSetDeleteId] = useState<string | null>(null)
+
   return (
     <article className="exercise-block brutal-card">
       <div className="exercise-block__header">
@@ -46,7 +51,7 @@ export function ExerciseBlockCard({
             type="button"
             className="icon-button icon-button--small"
             aria-label={`Remove ${block.name}`}
-            onClick={() => onDeleteExercise?.(block.workoutExerciseId)}
+            onClick={() => setConfirmExerciseDeleteOpen(true)}
           >
             <span className="material-symbols-outlined">delete</span>
           </button>
@@ -138,7 +143,7 @@ export function ExerciseBlockCard({
                 type="button"
                 className="icon-button icon-button--small"
                 aria-label={`Delete set ${setRow.orderIndex}`}
-                onClick={() => onDeleteSet?.(block.workoutExerciseId, setRow.id)}
+                onClick={() => setPendingSetDeleteId(setRow.id)}
               >
                 <span className="material-symbols-outlined">delete</span>
               </button>
@@ -168,6 +173,32 @@ export function ExerciseBlockCard({
             Add Set
           </button>
         </div>
+      ) : null}
+
+      {confirmExerciseDeleteOpen ? (
+        <ConfirmActionDialog
+          title="Delete exercise block?"
+          message="This removes the exercise and all its sets from the current workout."
+          confirmLabel="Delete"
+          onCancel={() => setConfirmExerciseDeleteOpen(false)}
+          onConfirm={() => {
+            onDeleteExercise?.(block.workoutExerciseId)
+            setConfirmExerciseDeleteOpen(false)
+          }}
+        />
+      ) : null}
+
+      {pendingSetDeleteId ? (
+        <ConfirmActionDialog
+          title="Delete set?"
+          message="This set will be removed from the current exercise block."
+          confirmLabel="Delete"
+          onCancel={() => setPendingSetDeleteId(null)}
+          onConfirm={() => {
+            onDeleteSet?.(block.workoutExerciseId, pendingSetDeleteId)
+            setPendingSetDeleteId(null)
+          }}
+        />
       ) : null}
     </article>
   )

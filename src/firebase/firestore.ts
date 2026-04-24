@@ -286,6 +286,25 @@ export async function deleteWorkoutDoc(uid: string, workoutId: string) {
   await deleteDoc(doc(firestore, 'users', uid, 'workouts', workoutId))
 }
 
+export async function restoreWorkoutDoc(uid: string, workout: Workout) {
+  const firestore = ensureDb()
+  const workoutRef = doc(firestore, 'users', uid, 'workouts', workout.id)
+
+  const workoutDoc: WorkoutDoc = {
+    title: workout.title,
+    workoutDate: workout.workoutDate,
+    durationMinutes: workout.durationMinutes,
+    muscleGroupIds: workout.muscleGroupIds,
+    exerciseBlocks: workout.exerciseBlocks.map(serializeExerciseBlock),
+  }
+
+  await setDoc(workoutRef, {
+    ...workoutDoc,
+    createdAt: Timestamp.fromDate(new Date(workout.createdAt)),
+    updatedAt: serverTimestamp(),
+  })
+}
+
 export async function saveTemplateDoc(uid: string, template: TemplateCardVM) {
   const firestore = ensureDb()
   const templateRef = doc(firestore, 'users', uid, 'templates', template.id)

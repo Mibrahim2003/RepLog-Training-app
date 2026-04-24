@@ -1,24 +1,72 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { AppShell, ExerciseBlockCard } from '../components'
+import { AppShell, ConfirmActionDialog, ExerciseBlockCard, UndoSnackbar } from '../components'
 import { useAppContext } from '../context/AppContext'
 import { formatLongDate } from '../utils/format'
+import { saveDeletionBackup } from '../utils/backups'
+import type { Workout } from '../types'
 
 export function WorkoutDetailPage() {
   const navigate = useNavigate()
   const params = useParams()
-  const { getWorkout, muscleGroups, profile, deleteWorkout } = useAppContext()
+  const { getWorkout, muscleGroups, profile, deleteWorkout, restoreWorkout } = useAppContext()
   const workout = params.id ? getWorkout(params.id) : null
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [undoWorkout, setUndoWorkout] = useState<Workout | null>(null)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) {
+        clearTimeout(undoTimerRef.current)
+      }
+    }
+  }, [])
 
   const muscleNames = useMemo(
     () =>
-      workout?.muscleGroupIds
+      (workout ?? undoWorkout)?.muscleGroupIds
         .map((muscleId) => muscleGroups.find((group) => group.id === muscleId)?.name)
         .filter(Boolean) as string[],
-    [muscleGroups, workout],
+    [muscleGroups, undoWorkout, workout],
   )
 
-  if (!workout) {
+  const clearUndo = () => {
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current)
+      undoTimerRef.current = null
+    }
+    setUndoWorkout(null)
+  }
+
+  const queueUndo = (snapshot: Workout) => {
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current)
+    }
+
+    setUndoWorkout(snapshot)
+    undoTimerRef.current = setTimeout(() => {
+      setUndoWorkout(null)
+      undoTimerRef.current = null
+      navigate('/history')
+    }, 7000)
+  }
+
+  const handleDeleteWorkout = () => {
+    if (!workout) {
+      return
+    }
+
+    const snapshot = JSON.parse(JSON.stringify(workout)) as Workout
+    void (async () => {
+      saveDeletionBackup('workout', { workout: snapshot })
+      await deleteWorkout(workout.id)
+      setConfirmDeleteOpen(false)
+      queueUndo(snapshot)
+    })()
+  }
+
+  if (!workout && !undoWorkout) {
     return (
       <AppShell activeTab="stats">
         <section className="page-stack">
@@ -30,15 +78,20 @@ export function WorkoutDetailPage() {
     )
   }
 
+  const activeWorkout = workout ?? undoWorkout
+  if (!activeWorkout) {
+    return null
+  }
+
   return (
     <AppShell activeTab="stats">
       <section className="page-stack">
         <section className="detail-hero">
           <div>
             <p className="eyebrow">Workout Detail</p>
-            <h1>{workout.title}</h1>
+            <h1>{activeWorkout.title}</h1>
             <p>
-              {formatLongDate(workout.workoutDate)}
+              {formatLongDate(activeWorkout.workoutDate)}
             </p>
           </div>
 
@@ -46,19 +99,16 @@ export function WorkoutDetailPage() {
             <button
               type="button"
               className="brutal-button brutal-button--primary"
-              onClick={() => navigate(`/workouts/${workout.id}/edit`)}
+              onClick={() => navigate(`/workouts/${activeWorkout.id}/edit`)}
+              disabled={!workout}
             >
               Edit
             </button>
             <button
               type="button"
               className="brutal-button brutal-button--secondary"
-              onClick={() => {
-                void (async () => {
-                  await deleteWorkout(workout.id)
-                  navigate('/history')
-                })()
-              }}
+              onClick={() => setConfirmDeleteOpen(true)}
+              disabled={!workout}
             >
               Delete
             </button>
@@ -74,7 +124,7 @@ export function WorkoutDetailPage() {
         </div>
 
         <div className="card-stack">
-          {workout.exerciseBlocks.map((block) => (
+          {activeWorkout.exerciseBlocks.map((block) => (
             <ExerciseBlockCard
               key={block.workoutExerciseId}
               block={block}
@@ -83,6 +133,32 @@ export function WorkoutDetailPage() {
             />
           ))}
         </div>
+
+        {confirmDeleteOpen ? (
+          <ConfirmActionDialog
+            title="Delete workout?"
+            message="This workout will be removed. You can undo for a few seconds right after deleting."
+            confirmLabel="Delete"
+            onCancel={() => setConfirmDeleteOpen(false)}
+            onConfirm={handleDeleteWorkout}
+          />
+        ) : null}
+
+        {undoWorkout ? (
+          <UndoSnackbar
+            message="Workout deleted."
+            onUndo={() => {
+              void (async () => {
+                await restoreWorkout(undoWorkout)
+                clearUndo()
+              })()
+            }}
+            onDismiss={() => {
+              clearUndo()
+              navigate('/history')
+            }}
+          />
+        ) : null}
       </section>
     </AppShell>
   )
