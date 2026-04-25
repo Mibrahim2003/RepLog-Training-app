@@ -127,31 +127,6 @@ export interface WorkoutCardVM {
   summary?: string
 }
 
-export interface TemplateExercise {
-  exerciseId: string
-  orderIndex: number
-  defaultSetCount: number
-}
-
-export interface TemplateDoc {
-  name: string
-  muscleGroupIds: string[]
-  exercises: TemplateExercise[]
-  lastUsedAt?: string
-  createdAt?: string
-  updatedAt?: string
-}
-
-export interface TemplateCardVM {
-  id: string
-  name: string
-  muscleGroupIds: string[]
-  exerciseCount: number
-  lastUsedAt?: string
-  createdAt?: string
-  updatedAt?: string
-  exercises: TemplateExercise[]
-}
 
 export interface ExerciseHistoryPoint {
   workoutDate: string

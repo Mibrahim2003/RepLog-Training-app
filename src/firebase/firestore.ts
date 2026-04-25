@@ -8,7 +8,6 @@ import {
   onSnapshot,
   serverTimestamp,
   setDoc,
-  updateDoc,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from './config'
@@ -18,15 +17,13 @@ import type {
   ExerciseBlockVM,
   ExerciseDefinition,
   SetEntryDoc,
-  TemplateCardVM,
-  TemplateDoc,
   UserProfile,
   UserProfileDoc,
   Workout,
   WorkoutDoc,
   WorkoutDraft,
 } from '../types'
-import { sortWorkoutsByDate, todayLocalDateString } from '../utils/format'
+import { sortWorkoutsByDate } from '../utils/format'
 import { annotateWorkoutsWithPrs } from '../utils/records'
 
 function ensureDb() {
@@ -181,38 +178,6 @@ export function subscribeToWorkouts(uid: string, onValue: (workouts: Workout[]) 
   })
 }
 
-export function subscribeToTemplates(
-  uid: string,
-  onValue: (templates: TemplateCardVM[]) => void,
-) {
-  const firestore = ensureDb()
-  return onSnapshot(collection(firestore, 'users', uid, 'templates'), (snapshot) => {
-    const mapped = snapshot.docs.map((documentSnapshot) => {
-      const data = documentSnapshot.data() as TemplateDoc
-      return {
-        id: documentSnapshot.id,
-        name: data.name,
-        muscleGroupIds: data.muscleGroupIds ?? [],
-        exerciseCount: data.exercises?.length ?? 0,
-        lastUsedAt: data.lastUsedAt,
-        createdAt: data.createdAt ? toIsoString(data.createdAt) : undefined,
-        updatedAt: data.updatedAt ? toIsoString(data.updatedAt) : undefined,
-        exercises: data.exercises ?? [],
-      } satisfies TemplateCardVM
-    })
-
-    onValue(
-      mapped.sort((left, right) => {
-        const rightStamp = right.lastUsedAt ?? ''
-        const leftStamp = left.lastUsedAt ?? ''
-        if (rightStamp !== leftStamp) {
-          return rightStamp.localeCompare(leftStamp)
-        }
-        return left.name.localeCompare(right.name)
-      }),
-    )
-  })
-}
 
 export function subscribeToCustomExercises(
   uid: string,
@@ -305,32 +270,6 @@ export async function restoreWorkoutDoc(uid: string, workout: Workout) {
   })
 }
 
-export async function saveTemplateDoc(uid: string, template: TemplateCardVM) {
-  const firestore = ensureDb()
-  const templateRef = doc(firestore, 'users', uid, 'templates', template.id)
-  await setDoc(
-    templateRef,
-    {
-      name: template.name,
-      muscleGroupIds: template.muscleGroupIds,
-      exercises: template.exercises,
-      lastUsedAt: template.lastUsedAt,
-      updatedAt: serverTimestamp(),
-      createdAt: template.createdAt
-        ? Timestamp.fromDate(new Date(template.createdAt))
-        : serverTimestamp(),
-    },
-    { merge: true },
-  )
-}
-
-export async function touchTemplateLastUsed(uid: string, templateId: string) {
-  const firestore = ensureDb()
-  await updateDoc(doc(firestore, 'users', uid, 'templates', templateId), {
-    lastUsedAt: todayLocalDateString(),
-    updatedAt: serverTimestamp(),
-  })
-}
 
 export async function createCustomExerciseDoc(
   uid: string,

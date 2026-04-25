@@ -1,13 +1,11 @@
 import type {
-  ExerciseBlockVM,
   ExerciseDefinition,
   MuscleGroup,
-  TemplateCardVM,
   Unit,
   Workout,
   WorkoutDraft,
 } from '../types'
-import { createBlankSet, makeId, todayLocalDateString } from '../utils/format'
+import { makeId, todayLocalDateString } from '../utils/format'
 
 export const muscleGroups: MuscleGroup[] = [
   { id: 'chest', name: 'Chest', sizeCategory: 'major' },
@@ -188,28 +186,3 @@ export function createDraftFromWorkout(workout: Workout): WorkoutDraft {
   }
 }
 
-export function buildBlocksFromTemplate(
-  template: TemplateCardVM,
-  preferredUnit: Unit,
-  exercises: ExerciseDefinition[],
-) {
-  return template.exercises
-    .slice()
-    .sort((left, right) => left.orderIndex - right.orderIndex)
-    .map((templateExercise) => {
-      const exercise = exercises.find((item) => item.id === templateExercise.exerciseId)
-      const setCount = Math.max(templateExercise.defaultSetCount, 1)
-
-      return {
-        workoutExerciseId: makeId('block'),
-        exerciseId: templateExercise.exerciseId,
-        name: exercise?.name ?? 'Custom Exercise',
-        note: '',
-        isDuplicateInstance: false,
-        duplicateWarning: false,
-        sets: Array.from({ length: setCount }, (_, index) =>
-          createBlankSet(index + 1, preferredUnit),
-        ),
-      } satisfies ExerciseBlockVM
-    })
-}
