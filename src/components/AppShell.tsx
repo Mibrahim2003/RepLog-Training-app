@@ -22,14 +22,10 @@ export function AppShell({ activeTab, children, headerAction }: AppShellProps) {
   return (
     <div className="app-frame">
       <header className={headerClassName}>
-        <button type="button" className="icon-button" aria-label="Open menu">
-          <span className="material-symbols-outlined">menu</span>
-        </button>
+        <div aria-hidden="true" style={{ width: 44, height: 44 }} />
         <div className="wordmark">RepLog</div>
         {headerAction ?? (
-          <button type="button" className="icon-button" aria-label="Profile">
-            <span className="material-symbols-outlined">account_circle</span>
-          </button>
+          <div aria-hidden="true" style={{ width: 44, height: 44 }} />
         )}
       </header>
 
