@@ -9,6 +9,10 @@ vi.mock('../src/context/AppContext', () => ({
   useAppContext: vi.fn(),
 }))
 
+vi.mock('../src/context/ToastContext', () => ({
+  useToast: () => ({ toast: null, showToast: vi.fn(), dismissToast: vi.fn() }),
+}))
+
 const mockMuscleGroups = [
   { id: 'chest', name: 'Chest', sizeCategory: 'major' },
   { id: 'back', name: 'Back', sizeCategory: 'major' },

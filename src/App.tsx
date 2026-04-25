@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { AppProvider, useAppContext } from './context/AppContext'
-import { DraftResumeDialog, LoadingScreen } from './components'
+import { ToastProvider } from './context/ToastContext'
+import { DraftResumeDialog, LoadingScreen, OfflineBanner, ToastOverlay } from './components'
 import {
   HomePage,
   WorkoutEditorPage,
@@ -48,6 +49,8 @@ function AppRoutes() {
 
   return (
     <>
+      <OfflineBanner />
+
       <Routes>
         <Route
           path="/sign-in"
@@ -68,15 +71,19 @@ function AppRoutes() {
           onDiscard={discardDraft}
         />
       ) : null}
+
+      <ToastOverlay />
     </>
   )
 }
 
 function App() {
   return (
-    <AppProvider>
-      <AppRoutes />
-    </AppProvider>
+    <ToastProvider>
+      <AppProvider>
+        <AppRoutes />
+      </AppProvider>
+    </ToastProvider>
   )
 }
 

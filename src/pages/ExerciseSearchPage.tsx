@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AppShell } from '../components'
 import { useAppContext } from '../context/AppContext'
+import { useToast } from '../context/ToastContext'
 import type { EditorTarget } from '../types'
 
 export function ExerciseSearchPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { muscleGroups, createCustomExercise, getDraft } = useAppContext()
+  const { showToast } = useToast()
   const [customName, setCustomName] = useState('')
   const [primaryMuscleGroupId, setPrimaryMuscleGroupId] = useState('')
 
@@ -48,12 +50,17 @@ export function ExerciseSearchPage() {
         return
       }
 
-      await createCustomExercise({
-        name: customName,
-        primaryMuscleGroupId: effectivePrimaryMuscleGroupId,
-        target,
-      })
-      navigate(target.kind === 'new' ? '/workouts/new?step=log' : `/workouts/${target.workoutId}/edit`)
+      try {
+        await createCustomExercise({
+          name: customName,
+          primaryMuscleGroupId: effectivePrimaryMuscleGroupId,
+          target,
+        })
+        showToast('Exercise created')
+        navigate(target.kind === 'new' ? '/workouts/new?step=log' : `/workouts/${target.workoutId}/edit`)
+      } catch {
+        showToast("Couldn't create exercise — retry", 'error')
+      }
     })()
   }
 

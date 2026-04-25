@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AppShell } from '../components'
 import { useAppContext } from '../context/AppContext'
+import { useToast } from '../context/ToastContext'
 
 function formatTimeAgo(date: Date, now: Date) {
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
@@ -13,10 +14,12 @@ function formatTimeAgo(date: Date, now: Date) {
 
 export function SettingsPage() {
   const { profile, updateProfile, signOut } = useAppContext()
+  const { showToast } = useToast()
   
   const [draftName, setDraftName] = useState(profile.displayName)
   const [draftUnit, setDraftUnit] = useState(profile.preferredUnit)
   const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [now, setNow] = useState(new Date())
 
@@ -37,10 +40,18 @@ export function SettingsPage() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    await updateProfile({ displayName: draftName, preferredUnit: draftUnit })
-    setIsSaving(false)
-    setLastSaved(new Date())
-    setNow(new Date())
+    setSaveError(false)
+    try {
+      await updateProfile({ displayName: draftName, preferredUnit: draftUnit })
+      setLastSaved(new Date())
+      setNow(new Date())
+      showToast('Settings saved')
+    } catch {
+      setSaveError(true)
+      showToast("Couldn't save settings — retry", 'error')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -87,11 +98,11 @@ export function SettingsPage() {
           <div className="settings-actions">
             <button
               type="button"
-              className="brutal-button brutal-button--primary"
-              disabled={!isDirty || isSaving}
+              className={`brutal-button ${saveError ? 'brutal-button--error' : 'brutal-button--primary'}`}
+              disabled={(!isDirty && !saveError) || isSaving}
               onClick={() => void handleSave()}
             >
-              {isSaving ? 'Saving…' : 'Save Changes'}
+              {isSaving ? 'Saving…' : saveError ? 'Retry Save' : 'Save Changes'}
             </button>
             {lastSaved && !isDirty ? (
               <>

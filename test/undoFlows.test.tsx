@@ -3,6 +3,7 @@ import { render, screen, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AppProvider, useAppContext } from '../src/context/AppContext'
+import { ToastProvider } from '../src/context/ToastContext'
 import { WorkoutEditorPage } from '../src/pages/WorkoutEditorPage'
 
 // Mock Firebase config
@@ -60,16 +61,18 @@ describe('Undo Flows & Destructive Actions', () => {
 
     render(
       <MemoryRouter initialEntries={['/workouts/new?step=log']}>
-        <AppProvider>
-          <Routes>
-            <Route path="/workouts/new" element={
-              <>
-                <SeedDraftHelper />
-                <WorkoutEditorPage mode="new" />
-              </>
-            } />
-          </Routes>
-        </AppProvider>
+        <ToastProvider>
+          <AppProvider>
+            <Routes>
+              <Route path="/workouts/new" element={
+                <>
+                  <SeedDraftHelper />
+                  <WorkoutEditorPage mode="new" />
+                </>
+              } />
+            </Routes>
+          </AppProvider>
+        </ToastProvider>
       </MemoryRouter>
     )
 

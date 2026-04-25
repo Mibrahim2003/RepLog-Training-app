@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppShell, ExerciseBlockCard, UndoSnackbar } from '../components'
 import { useAppContext } from '../context/AppContext'
+import { useToast } from '../context/ToastContext'
 import type { EditorTarget, WorkoutDraft } from '../types'
 import { deriveWorkoutTitle, formatLongDate } from '../utils/format'
 import { saveDeletionBackup } from '../utils/backups'
@@ -32,7 +33,9 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
     deleteExerciseBlock,
     saveWorkout,
   } = useAppContext()
+  const { showToast } = useToast()
   const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState(false)
   const [customMuscleName, setCustomMuscleName] = useState('')
   const [undoState, setUndoState] = useState<{ message: string; snapshot: WorkoutDraft } | null>(null)
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -123,11 +126,18 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
   const handleSave = () => {
     void (async () => {
       setIsSaving(true)
-      const savedId = await saveWorkout(target, draft)
-      setIsSaving(false)
-
-      if (savedId) {
-        navigate(`/workouts/${savedId}`)
+      setSaveError(false)
+      try {
+        const savedId = await saveWorkout(target, draft!)
+        if (savedId) {
+          showToast('Workout saved')
+          navigate(`/workouts/${savedId}`)
+        }
+      } catch {
+        setSaveError(true)
+        showToast("Couldn't save — retry", 'error')
+      } finally {
+        setIsSaving(false)
       }
     })()
   }
@@ -234,11 +244,11 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
 
           <button
             type="button"
-            className="brutal-button brutal-button--primary"
+            className={`brutal-button ${saveError ? 'brutal-button--error' : 'brutal-button--primary'}`}
             onClick={handleSave}
             disabled={isSaving}
           >
-            {isSaving ? 'Saving…' : mode === 'new' ? 'Save Workout' : 'Save Changes'}
+            {isSaving ? 'Saving…' : saveError ? 'Retry Save' : mode === 'new' ? 'Save Workout' : 'Save Changes'}
           </button>
         </section>
 

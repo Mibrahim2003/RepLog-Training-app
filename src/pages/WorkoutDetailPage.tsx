@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell, ConfirmActionDialog, ExerciseBlockCard, UndoSnackbar } from '../components'
 import { useAppContext } from '../context/AppContext'
+import { useToast } from '../context/ToastContext'
 import { formatLongDate } from '../utils/format'
 import { saveDeletionBackup } from '../utils/backups'
 import type { Workout } from '../types'
@@ -10,6 +11,7 @@ export function WorkoutDetailPage() {
   const navigate = useNavigate()
   const params = useParams()
   const { getWorkout, muscleGroups, profile, deleteWorkout, restoreWorkout } = useAppContext()
+  const { showToast } = useToast()
   const workout = params.id ? getWorkout(params.id) : null
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [undoWorkout, setUndoWorkout] = useState<Workout | null>(null)
@@ -59,10 +61,16 @@ export function WorkoutDetailPage() {
 
     const snapshot = JSON.parse(JSON.stringify(workout)) as Workout
     void (async () => {
-      saveDeletionBackup('workout', { workout: snapshot })
-      await deleteWorkout(workout.id)
-      setConfirmDeleteOpen(false)
-      queueUndo(snapshot)
+      try {
+        saveDeletionBackup('workout', { workout: snapshot })
+        await deleteWorkout(workout.id)
+        setConfirmDeleteOpen(false)
+        showToast('Workout deleted')
+        queueUndo(snapshot)
+      } catch {
+        setConfirmDeleteOpen(false)
+        showToast("Couldn't delete — try again", 'error')
+      }
     })()
   }
 
@@ -149,8 +157,13 @@ export function WorkoutDetailPage() {
             message="Workout deleted."
             onUndo={() => {
               void (async () => {
-                await restoreWorkout(undoWorkout)
-                clearUndo()
+                try {
+                  await restoreWorkout(undoWorkout)
+                  showToast('Workout restored')
+                  clearUndo()
+                } catch {
+                  showToast("Couldn't restore — try again", 'error')
+                }
               })()
             }}
             onDismiss={() => {
