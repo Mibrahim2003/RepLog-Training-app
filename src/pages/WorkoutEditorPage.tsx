@@ -142,12 +142,15 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
     })()
   }
 
+  const hasNoMuscles = draft.muscleGroupIds.length === 0
+
   if (!isLogStep) {
     return (
       <AppShell activeTab="log">
         <section className="page-stack">
           <div className="section-heading">
             <h1>New Workout</h1>
+            <p className="step-indicator">Step 1 of 2 — Setup</p>
           </div>
 
           <section className="setup-card brutal-card">
@@ -190,6 +193,10 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
               })}
             </div>
 
+            {hasNoMuscles ? (
+              <p className="validation-hint" role="alert">Pick at least one muscle group to continue.</p>
+            ) : null}
+
             <div className="muscle-add-row">
               <input
                 className="brutal-input"
@@ -211,8 +218,9 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
             type="button"
             className="brutal-button brutal-button--primary brutal-button--full sticky-action"
             onClick={() => navigate('/exercise-search?editor=new')}
+            disabled={hasNoMuscles}
           >
-            Log Exercise
+            Log Exercise →
           </button>
         </section>
       </AppShell>
@@ -222,6 +230,10 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
   return (
     <AppShell activeTab="log">
       <section className="page-stack page-stack--editor">
+        {mode === 'new' ? (
+          <p className="step-indicator">Step 2 of 2 — Log Exercises</p>
+        ) : null}
+
         <div className="tag-row">
           {draft.muscleGroupIds.map((muscleId) => {
             const muscleName = muscleGroups.find((group) => group.id === muscleId)?.name

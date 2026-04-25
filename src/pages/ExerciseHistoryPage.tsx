@@ -84,6 +84,46 @@ export function ExerciseHistoryPage() {
     (session) => new Date(session.workout.workoutDate).getTime() >= last30Cutoff.getTime(),
   ).length
 
+  // Delta vs last session
+  const deltaLabel = (() => {
+    if (perSession.length < 2) return null
+    const current = perSession[0].heaviestCanonicalKg
+    const previous = perSession[1].heaviestCanonicalKg
+    const diffKg = current - previous
+    if (diffKg === 0) return null
+    const diffDisplay = fromCanonicalKg(Math.abs(diffKg), profile.preferredUnit)
+    const sign = diffKg > 0 ? '+' : '-'
+    return `${sign}${formatWeight(diffDisplay, profile.preferredUnit)} vs last`
+  })()
+
+  // Streak: consecutive weeks with at least one session
+  const computeStreak = () => {
+    if (sessions.length === 0) return 0
+    const now = new Date()
+    const getWeekStart = (date: Date) => {
+      const d = new Date(date)
+      d.setHours(0, 0, 0, 0)
+      d.setDate(d.getDate() - d.getDay())
+      return d.getTime()
+    }
+    const currentWeek = getWeekStart(now)
+    const sessionWeeks = new Set(
+      sessions.map((session) => getWeekStart(new Date(session.workoutDate)))
+    )
+    let streak = 0
+    let week = currentWeek
+    const oneWeek = 7 * 24 * 60 * 60 * 1000
+    while (sessionWeeks.has(week)) {
+      streak++
+      week -= oneWeek
+    }
+    return streak
+  }
+  const streak = computeStreak()
+
+  // Consistency: sessions in last 30 days as a percentage of expected (4 sessions)
+  const consistencyScore = Math.min(Math.round((frequency30d / 4) * 100), 100)
+
   return (
     <AppShell activeTab="stats">
       <section className="page-stack">
@@ -95,6 +135,11 @@ export function ExerciseHistoryPage() {
           <div>
             <p className="eyebrow">Exercise History</p>
             <h1>{exercise.name}</h1>
+            {deltaLabel ? (
+              <p className={`delta-badge ${deltaLabel.startsWith('+') ? 'delta-badge--up' : 'delta-badge--down'}`}>
+                {deltaLabel}
+              </p>
+            ) : null}
           </div>
           <Link to="/workouts/new?step=log" className="fab-mini brutal-button brutal-button--primary">
             +
@@ -114,6 +159,14 @@ export function ExerciseHistoryPage() {
                 profile.preferredUnit,
               )}
             </strong>
+          </article>
+          <article className="stat-card brutal-card">
+            <span>Streak</span>
+            <strong>{streak} {streak === 1 ? 'week' : 'weeks'} 🔥</strong>
+          </article>
+          <article className="stat-card brutal-card">
+            <span>Consistency</span>
+            <strong>{consistencyScore}%</strong>
           </article>
           <article className="stat-card brutal-card">
             <span>Total Volume</span>

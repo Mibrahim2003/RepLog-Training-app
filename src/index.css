@@ -804,18 +804,76 @@ h3,
 
 .raw-chart {
   position: relative;
-  aspect-ratio: 1 / 0.72;
+  display: flex;
+  gap: 0;
   margin-top: var(--space-2);
+}
+
+.chart-y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px 0 22px;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+  min-width: 48px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.chart-svg-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  aspect-ratio: 1 / 0.72;
   border: 1px solid var(--ink);
   background:
-    linear-gradient(to right, rgba(0, 0, 0, 0.1) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+    linear-gradient(to right, rgba(0, 0, 0, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
-.raw-chart svg {
+.chart-svg-wrap svg {
   width: 100%;
   height: 100%;
+}
+
+.chart-x-axis {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 4px 0;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.chart-tooltip {
+  position: absolute;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  display: grid;
+  gap: 2px;
+  text-align: center;
+  animation: toast-slide-in 120ms ease-out;
+}
+
+.chart-tooltip strong {
+  font-size: 0.92rem;
+}
+
+.chart-tooltip span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.55);
 }
 
 .chart-empty {
@@ -823,6 +881,104 @@ h3,
   place-items: center;
   height: 100%;
   font-size: 0.96rem;
+}
+
+/* Step Indicator */
+.step-indicator {
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-top: var(--space-1);
+}
+
+/* Validation hint */
+.validation-hint {
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.88rem;
+  color: var(--accent);
+  text-align: center;
+  padding: var(--space-1) 0;
+}
+
+/* Delta badges */
+.delta-badge {
+  display: inline-block;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.delta-badge--up {
+  color: #22c55e;
+}
+
+.delta-badge--down {
+  color: #f97316;
+}
+
+/* Template grid (beginner quick start) */
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.template-card {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-2);
+  text-align: center;
+  cursor: pointer;
+  border: 3px solid var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.template-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translate(-2px, -2px);
+}
+
+.template-card:active {
+  box-shadow: none;
+  transform: translate(4px, 4px);
+}
+
+.template-card__icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.template-card strong {
+  font-family: 'Epilogue', sans-serif;
+  font-size: 1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.template-card__muscles {
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.75rem;
+  text-transform: capitalize;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+/* Empty state secondary actions */
+.empty-state__secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.empty-state__secondary .brutal-button {
+  flex: 1 1 auto;
+  min-height: 48px;
+  font-size: 0.95rem;
 }
 
 .session-card {
