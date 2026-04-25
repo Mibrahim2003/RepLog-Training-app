@@ -982,6 +982,53 @@ h3,
   min-height: 44px;
 }
 
+.settings-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.saved-timestamp {
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.9rem;
+  color: rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+
+.settings-divider {
+  border: 0;
+  border-bottom: 2px solid var(--ink);
+  margin: var(--space-2) 0;
+}
+
+/* Accessibility Focus Polish */
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.brutal-button:focus-visible,
+.icon-button:focus-visible,
+.segment:focus-visible,
+.muscle-chip:focus-visible,
+.tag--button:focus-visible,
+.bottom-nav__item:focus-visible {
+  outline: 4px dashed var(--ink);
+  outline-offset: 4px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 @media (min-width: 640px) {
   .app-main {
     width: min(100%, 720px);

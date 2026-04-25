@@ -18,7 +18,11 @@ export function SignInPage() {
           Fast, raw, and built for post-gym logging without the clutter.
         </p>
 
-        {authError ? <p className="auth-error">{authError}</p> : null}
+        {authError ? (
+          <p className="auth-error" role="alert">
+            {authError}
+          </p>
+        ) : null}
         {!isFirebaseConfigured && firebaseSetupMessage ? (
           <p className="muted-copy">{firebaseSetupMessage}</p>
         ) : null}
