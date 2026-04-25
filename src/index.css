@@ -741,6 +741,18 @@ h3,
   gap: 0;
 }
 
+.exercise-search {
+  position: relative;
+}
+
+.exercise-suggestions {
+  border: 2px solid var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  max-height: 360px;
+  overflow: auto;
+}
+
 .result-row {
   display: flex;
   align-items: center;
@@ -762,6 +774,11 @@ h3,
   font-size: 1.3rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.result-row .muted-copy {
+  font-size: 0.82rem;
+  margin-top: 4px;
 }
 
 .stats-grid {
