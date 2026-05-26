@@ -1,11 +1,13 @@
 import { Link, useParams } from 'react-router-dom'
 import { AppShell, EmptyState, RawLineChart } from '../components'
-import { useAppContext } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
+import { useData } from '../context/DataContext'
 import { formatDateLabel, formatWeight, fromCanonicalKg, sortWorkoutsByDate } from '../utils/format'
 
 export function ExerciseHistoryPage() {
   const params = useParams()
-  const { getExercise, workouts, profile, muscleGroups } = useAppContext()
+  const { profile } = useAuth()
+  const { getExercise, workouts, muscleGroups } = useData()
   const exercise = params.id ? getExercise(params.id) : null
 
   if (!exercise) {

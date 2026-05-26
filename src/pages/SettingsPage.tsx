@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AppShell } from '../components'
-import { useAppContext } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
 function formatTimeAgo(date: Date, now: Date) {
@@ -13,7 +13,7 @@ function formatTimeAgo(date: Date, now: Date) {
 }
 
 export function SettingsPage() {
-  const { profile, updateProfile, signOut } = useAppContext()
+  const { profile, updateProfile, signOut } = useAuth()
   const { showToast } = useToast()
   
   const [draftName, setDraftName] = useState(profile.displayName)
@@ -25,7 +25,9 @@ export function SettingsPage() {
 
   // Sync draft if profile changes externally (like on initial load)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftName(profile.displayName)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftUnit(profile.preferredUnit)
   }, [profile.displayName, profile.preferredUnit])
 

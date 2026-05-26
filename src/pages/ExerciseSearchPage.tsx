@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AppShell } from '../components'
-import { useAppContext } from '../context/AppContext'
+import { useData } from '../context/DataContext'
+import { useEditorStore } from '../store/useEditorStore'
 import { useToast } from '../context/ToastContext'
 import type { EditorTarget, ExerciseDefinition } from '../types'
 
@@ -30,9 +31,13 @@ function scoreExerciseMatch(exercise: ExerciseDefinition, query: string) {
 export function ExerciseSearchPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { muscleGroups, exercises, addExerciseToDraft, createCustomExercise, getDraft } = useAppContext()
+  const { muscleGroups, exercises, createCustomExercise } = useData()
   const { showToast } = useToast()
   const [searchQuery, setSearchQuery] = useState('')
+
+  const draft = useEditorStore((state) => state.activeDraft)
+  const addExerciseBlock = useEditorStore((state) => state.addExerciseBlock)
+
   const [customName, setCustomName] = useState('')
   const [primaryMuscleGroupId, setPrimaryMuscleGroupId] = useState('')
 
@@ -44,25 +49,29 @@ export function ExerciseSearchPage() {
         }
       : { kind: 'new' }
 
-  const draft = getDraft(target)
-
-  const selectedIds = draft?.muscleGroupIds ?? []
-  const selectedMuscleGroups =
-    selectedIds.length === 0
-      ? muscleGroups
-      : muscleGroups.filter((group) => selectedIds.includes(group.id))
-
-  const selectedMuscleIds = new Set(selectedMuscleGroups.map((group) => group.id))
-  const inScope = exercises.filter((exercise) => {
-    if (selectedMuscleIds.size === 0) {
-      return true
+  const selectedMuscleGroups = useMemo(() => {
+    const selectedIds = draft?.muscleGroupIds ?? []
+    if (selectedIds.length === 0) {
+      return muscleGroups
     }
+    return muscleGroups.filter((group) => selectedIds.includes(group.id))
+  }, [draft?.muscleGroupIds, muscleGroups])
 
-    return (
-      selectedMuscleIds.has(exercise.primaryMuscleGroupId) ||
-      exercise.secondaryMuscleGroupIds.some((muscleId) => selectedMuscleIds.has(muscleId))
-    )
-  })
+  const selectedMuscleIds = useMemo(() => {
+    return new Set(selectedMuscleGroups.map((group) => group.id))
+  }, [selectedMuscleGroups])
+
+  const inScope = useMemo(() => {
+    return exercises.filter((exercise) => {
+      if (selectedMuscleIds.size === 0) {
+        return true
+      }
+      return (
+        selectedMuscleIds.has(exercise.primaryMuscleGroupId) ||
+        exercise.secondaryMuscleGroupIds.some((muscleId) => selectedMuscleIds.has(muscleId))
+      )
+    })
+  }, [exercises, selectedMuscleIds])
 
   const recommendedExercises = inScope
     .map((exercise) => ({
@@ -89,7 +98,11 @@ export function ExerciseSearchPage() {
     : (selectedMuscleGroups[0]?.id ?? '')
 
   const handlePickExercise = (exerciseId: string) => {
-    addExerciseToDraft(target, exerciseId)
+    const exercise = exercises.find((e) => e.id === exerciseId)
+    if (!exercise) return
+
+    const isDuplicate = draft?.exerciseBlocks.some((b) => b.exerciseId === exerciseId) ?? false
+    addExerciseBlock(exerciseId, exercise.name, exercise.primaryMuscleGroupId, isDuplicate)
     showToast('Exercise added')
     navigate(target.kind === 'new' ? '/workouts/new?step=log' : `/workouts/${target.workoutId}/edit`)
   }
@@ -105,11 +118,11 @@ export function ExerciseSearchPage() {
       }
 
       try {
-        await createCustomExercise({
-          name: customName,
-          primaryMuscleGroupId: effectivePrimaryMuscleGroupId,
-          target,
-        })
+        const newId = await createCustomExercise(customName, effectivePrimaryMuscleGroupId)
+        if (newId && draft) {
+          const isDuplicate = draft.exerciseBlocks.some(b => b.exerciseId === newId)
+          addExerciseBlock(newId, customName, effectivePrimaryMuscleGroupId, isDuplicate)
+        }
         showToast('Exercise created')
         navigate(target.kind === 'new' ? '/workouts/new?step=log' : `/workouts/${target.workoutId}/edit`)
       } catch {

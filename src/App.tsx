@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { AppProvider, useAppContext } from './context/AppContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import { DataProvider, useData } from './context/DataContext'
 import { ToastProvider } from './context/ToastContext'
 import { DraftResumeDialog, LoadingScreen, OfflineBanner, ToastOverlay } from './components'
 import {
@@ -14,7 +15,7 @@ import {
 } from './pages'
 
 function ProtectedRoutes() {
-  const { session } = useAppContext()
+  const { session } = useAuth()
 
   if (session.status === 'loading') {
     return <LoadingScreen />
@@ -41,7 +42,8 @@ function ProtectedRoutes() {
 
 function AppRoutes() {
   const navigate = useNavigate()
-  const { discardDraft, pendingDrafts, resumeDraft, session } = useAppContext()
+  const { session } = useAuth()
+  const { discardDraft, pendingDrafts, resumeDraft } = useData()
 
   if (session.status === 'loading') {
     return <LoadingScreen />
@@ -80,9 +82,11 @@ function AppRoutes() {
 function App() {
   return (
     <ToastProvider>
-      <AppProvider>
-        <AppRoutes />
-      </AppProvider>
+      <AuthProvider>
+        <DataProvider>
+          <AppRoutes />
+        </DataProvider>
+      </AuthProvider>
     </ToastProvider>
   )
 }

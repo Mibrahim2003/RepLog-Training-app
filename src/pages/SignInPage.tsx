@@ -1,8 +1,8 @@
-import { useAppContext } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 
 export function SignInPage() {
   const { authError, clearAuthError, firebaseSetupMessage, isFirebaseConfigured, signInWithGoogle } =
-    useAppContext()
+    useAuth()
 
   const handleSignIn = async () => {
     clearAuthError()

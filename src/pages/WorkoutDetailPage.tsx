@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell, ConfirmActionDialog, ExerciseBlockCard, UndoSnackbar } from '../components'
-import { useAppContext } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
+import { useData } from '../context/DataContext'
 import { useToast } from '../context/ToastContext'
 import { formatLongDate } from '../utils/format'
 import { saveDeletionBackup } from '../utils/backups'
@@ -10,7 +11,8 @@ import type { Workout } from '../types'
 export function WorkoutDetailPage() {
   const navigate = useNavigate()
   const params = useParams()
-  const { getWorkout, muscleGroups, profile, deleteWorkout, restoreWorkout } = useAppContext()
+  const { profile } = useAuth()
+  const { getWorkout, muscleGroups, deleteWorkout, restoreWorkout } = useData()
   const { showToast } = useToast()
   const workout = params.id ? getWorkout(params.id) : null
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)

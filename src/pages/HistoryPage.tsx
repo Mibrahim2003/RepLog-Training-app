@@ -1,9 +1,9 @@
 import { AppShell, EmptyState, WorkoutCard } from '../components'
-import { useAppContext } from '../context/AppContext'
+import { useData } from '../context/DataContext'
 import { sortWorkoutsByDate } from '../utils/format'
 
 export function HistoryPage() {
-  const { workouts, muscleGroups } = useAppContext()
+  const { workouts, muscleGroups } = useData()
   const sorted = sortWorkoutsByDate(workouts)
 
   return (

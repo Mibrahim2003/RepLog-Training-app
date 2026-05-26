@@ -1,7 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { AppShell, EmptyState, WorkoutCard } from '../components'
-import { useAppContext } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
+import { useData } from '../context/DataContext'
+import { useEditorStore } from '../store/useEditorStore'
 import { sortWorkoutsByDate } from '../utils/format'
+import { createEmptyDraft } from '../data/mockData'
 
 const beginnerTemplates = [
   { label: 'Push Day', muscles: ['chest', 'shoulders', 'triceps'], icon: '💪' },
@@ -11,21 +14,28 @@ const beginnerTemplates = [
 ]
 
 export function HomePage() {
-  const { profile, workouts, muscleGroups, ensureNewDraft, toggleMuscleGroup } = useAppContext()
+  const { profile, session } = useAuth()
+  const { workouts, muscleGroups } = useData()
+  const loadDraft = useEditorStore((state) => state.loadDraft)
+  
   const navigate = useNavigate()
   const recentWorkouts = sortWorkoutsByDate(workouts).slice(0, 4)
 
   const handleQuickStart = (template: typeof beginnerTemplates[number]) => {
-    ensureNewDraft()
-    const target = { kind: 'new' } as const
+    if (session.status !== 'authenticated' || !session.uid) return
+
+    const newDraft = createEmptyDraft()
+    
     for (const muscleName of template.muscles) {
       const group = muscleGroups.find(
         (g) => g.name.toLowerCase() === muscleName.toLowerCase()
       )
       if (group) {
-        toggleMuscleGroup(target, group.id)
+        newDraft.muscleGroupIds.push(group.id)
       }
     }
+    
+    loadDraft(session.uid, { kind: 'new' }, newDraft, profile.preferredUnit)
     navigate('/exercise-search?editor=new')
   }
 

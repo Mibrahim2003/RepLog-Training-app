@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppShell, ExerciseBlockCard, UndoSnackbar } from '../components'
-import { useAppContext } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
+import { useData } from '../context/DataContext'
 import { useToast } from '../context/ToastContext'
+import { useEditorStore } from '../store/useEditorStore'
 import type { EditorTarget, WorkoutDraft } from '../types'
 import { deriveWorkoutTitle, formatLongDate } from '../utils/format'
 import { saveDeletionBackup } from '../utils/backups'
+import { createEmptyDraft, createDraftFromWorkout } from '../data/mockData'
+import { readDraftPayload, draftStorageKey } from '../utils/drafts'
 
 interface WorkoutEditorPageProps {
   mode: 'new' | 'edit'
@@ -15,15 +19,17 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
   const navigate = useNavigate()
   const params = useParams()
   const [searchParams] = useSearchParams()
+  
+  const { session, profile } = useAuth()
+  const { muscleGroups, getWorkout, addMuscleGroup, saveWorkout: globalSaveWorkout } = useData()
+  const { showToast } = useToast()
+
+  const draft = useEditorStore((state) => state.activeDraft)
+  const storeTarget = useEditorStore((state) => state.target)
   const {
-    muscleGroups,
-    profile,
-    ensureNewDraft,
-    ensureEditDraft,
-    getDraft,
+    loadDraft,
     replaceDraft,
     updateDraftMeta,
-    addMuscleGroup,
     toggleMuscleGroup,
     updateExerciseNote,
     updateSetField,
@@ -31,9 +37,8 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
     duplicateLastSet,
     deleteSet,
     deleteExerciseBlock,
-    saveWorkout,
-  } = useAppContext()
-  const { showToast } = useToast()
+  } = useEditorStore()
+
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState(false)
   const [customMuscleName, setCustomMuscleName] = useState('')
@@ -44,29 +49,48 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
     if (mode === 'edit' && params.id) {
       return { kind: 'edit', workoutId: params.id }
     }
-
     return { kind: 'new' }
   }, [mode, params.id])
 
   useEffect(() => {
-    if (mode === 'new') {
-      ensureNewDraft()
+    if (session.status !== 'authenticated' || !session.uid) return
+
+    // If store is already loaded for this target, do nothing (e.g. returning from ExerciseSearch)
+    if (
+      draft &&
+      storeTarget &&
+      storeTarget.kind === target.kind &&
+      (storeTarget.kind === 'new' || (target.kind === 'edit' && storeTarget.workoutId === target.workoutId))
+    ) {
       return
     }
 
-    if (params.id) {
-      ensureEditDraft(params.id)
-    }
-  }, [ensureEditDraft, ensureNewDraft, mode, params.id])
+    let draftToLoad: WorkoutDraft | null = null
+    const key = draftStorageKey(session.uid, target)
+    const existing = readDraftPayload(key)
 
-  const draft = getDraft(target)
+    if (mode === 'new') {
+      draftToLoad = existing?.draft ?? createEmptyDraft()
+    } else if (params.id) {
+      if (existing) {
+        draftToLoad = existing.draft
+      } else {
+        const workout = getWorkout(params.id)
+        if (workout) {
+          draftToLoad = createDraftFromWorkout(workout)
+        }
+      }
+    }
+
+    if (draftToLoad) {
+      loadDraft(session.uid, target, draftToLoad, profile.preferredUnit)
+    }
+  }, [mode, params.id, session, target, draft, storeTarget, getWorkout, profile.preferredUnit, loadDraft])
+
   const isLogStep = mode === 'edit' || searchParams.get('step') === 'log'
 
   const queueUndo = (message: string, snapshot: WorkoutDraft) => {
-    if (undoTimerRef.current) {
-      clearTimeout(undoTimerRef.current)
-    }
-
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
     setUndoState({ message, snapshot })
     undoTimerRef.current = setTimeout(() => {
       setUndoState(null)
@@ -86,9 +110,7 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
 
   useEffect(() => {
     return () => {
-      if (undoTimerRef.current) {
-        clearTimeout(undoTimerRef.current)
-      }
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
     }
   }, [])
 
@@ -109,17 +131,13 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
       target.kind === 'new'
         ? '/exercise-search?editor=new'
         : `/exercise-search?editor=edit&workoutId=${target.workoutId}`
-
     navigate(href)
   }
 
   const handleAddMuscleGroup = () => {
     const groupId = addMuscleGroup(customMuscleName)
-    if (!groupId) {
-      return
-    }
-
-    toggleMuscleGroup(target, groupId)
+    if (!groupId) return
+    toggleMuscleGroup(groupId)
     setCustomMuscleName('')
   }
 
@@ -128,8 +146,9 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
       setIsSaving(true)
       setSaveError(false)
       try {
-        const savedId = await saveWorkout(target, draft!)
+        const savedId = await globalSaveWorkout(target, draft)
         if (savedId) {
+          useEditorStore.getState().unloadDraft()
           showToast('Workout saved')
           navigate(`/workouts/${savedId}`)
         }
@@ -163,11 +182,7 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
                 type="date"
                 className="brutal-input"
                 value={draft.workoutDate}
-                onChange={(event) =>
-                  updateDraftMeta(target, {
-                    workoutDate: event.target.value,
-                  })
-                }
+                onChange={(event) => updateDraftMeta({ workoutDate: event.target.value })}
               />
             </div>
           </section>
@@ -185,7 +200,7 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
                     key={group.id}
                     type="button"
                     className={`muscle-chip${selected ? ' muscle-chip--selected' : ''}`}
-                    onClick={() => toggleMuscleGroup(target, group.id)}
+                    onClick={() => toggleMuscleGroup(group.id)}
                   >
                     {group.name}
                   </button>
@@ -271,37 +286,20 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
               block={block}
               preferredUnit={profile.preferredUnit}
               editable
-              onExerciseNoteChange={(workoutExerciseId, note) =>
-                updateExerciseNote(target, workoutExerciseId, note)
-              }
-              onSetChange={(workoutExerciseId, setId, field, value) =>
-                updateSetField(target, workoutExerciseId, setId, field, value)
-              }
-              onAddSet={(workoutExerciseId) => addSet(target, workoutExerciseId)}
-              onDuplicateLastSet={(workoutExerciseId) =>
-                duplicateLastSet(target, workoutExerciseId)
-              }
+              onExerciseNoteChange={updateExerciseNote}
+              onSetChange={updateSetField}
+              onAddSet={addSet}
+              onDuplicateLastSet={duplicateLastSet}
               onDeleteSet={(workoutExerciseId, setId) => {
                 const snapshot = cloneDraft(draft)
-                saveDeletionBackup('set', {
-                  target,
-                  workoutExerciseId,
-                  setId,
-                  snapshot,
-                })
-
-                deleteSet(target, workoutExerciseId, setId)
+                saveDeletionBackup('set', { target, workoutExerciseId, setId, snapshot })
+                deleteSet(workoutExerciseId, setId)
                 queueUndo('Set deleted.', snapshot)
               }}
               onDeleteExercise={(workoutExerciseId) => {
                 const snapshot = cloneDraft(draft)
-                saveDeletionBackup('exercise', {
-                  target,
-                  workoutExerciseId,
-                  snapshot,
-                })
-
-                deleteExerciseBlock(target, workoutExerciseId)
+                saveDeletionBackup('exercise', { target, workoutExerciseId, snapshot })
+                deleteExerciseBlock(workoutExerciseId)
                 queueUndo('Exercise block deleted.', snapshot)
               }}
             />
@@ -320,7 +318,7 @@ export function WorkoutEditorPage({ mode }: WorkoutEditorPageProps) {
           <UndoSnackbar
             message={undoState.message}
             onUndo={() => {
-              replaceDraft(target, undoState.snapshot)
+              replaceDraft(undoState.snapshot)
               clearUndo()
             }}
             onDismiss={clearUndo}

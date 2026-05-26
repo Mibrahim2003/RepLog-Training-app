@@ -32,7 +32,7 @@ export function persistDraftToSession(uid: string, target: EditorTarget, draft: 
     updatedAt: new Date().toISOString(),
   }
 
-  window.sessionStorage.setItem(draftStorageKey(uid, target), JSON.stringify(payload))
+  window.localStorage.setItem(draftStorageKey(uid, target), JSON.stringify(payload))
 }
 
 export function clearDraftFromSession(uid: string, target: EditorTarget) {
@@ -40,7 +40,7 @@ export function clearDraftFromSession(uid: string, target: EditorTarget) {
     return
   }
 
-  window.sessionStorage.removeItem(draftStorageKey(uid, target))
+  window.localStorage.removeItem(draftStorageKey(uid, target))
 }
 
 export function clearAllDraftsForUser(uid: string) {
@@ -49,9 +49,9 @@ export function clearAllDraftsForUser(uid: string) {
   }
 
   const prefix = `${DRAFT_STORAGE_PREFIX}:${uid}:`
-  const keys = Object.keys(window.sessionStorage).filter((key) => key.startsWith(prefix))
+  const keys = Object.keys(window.localStorage).filter((key) => key.startsWith(prefix))
   for (const key of keys) {
-    window.sessionStorage.removeItem(key)
+    window.localStorage.removeItem(key)
   }
 }
 
@@ -60,7 +60,7 @@ export function readDraftPayload(key: string) {
     return null
   }
 
-  const raw = window.sessionStorage.getItem(key)
+  const raw = window.localStorage.getItem(key)
   if (!raw) {
     return null
   }
@@ -68,7 +68,7 @@ export function readDraftPayload(key: string) {
   try {
     return JSON.parse(raw) as StoredDraftPayload
   } catch {
-    window.sessionStorage.removeItem(key)
+    window.localStorage.removeItem(key)
     return null
   }
 }
@@ -89,11 +89,19 @@ export function listDraftReferences(uid: string): DraftReference[] {
   }
 
   const prefix = `${DRAFT_STORAGE_PREFIX}:${uid}:`
-  return Object.keys(window.sessionStorage)
+  const ttlMs = 48 * 60 * 60 * 1000 // 48 hours
+
+  return Object.keys(window.localStorage)
     .filter((key) => key.startsWith(prefix))
     .map((key) => {
       const payload = readDraftPayload(key)
       if (!payload) {
+        return null
+      }
+
+      const isStale = Date.now() - new Date(payload.updatedAt).getTime() > ttlMs
+      if (isStale) {
+        window.localStorage.removeItem(key)
         return null
       }
 
@@ -114,5 +122,5 @@ export function discardStoredDraft(reference: DraftReference) {
     return
   }
 
-  window.sessionStorage.removeItem(reference.key)
+  window.localStorage.removeItem(reference.key)
 }
